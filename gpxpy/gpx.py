@@ -115,7 +115,7 @@ TimeBounds = mod_collections.namedtuple(
     ('start_time', 'end_time'))
 MovingData = mod_collections.namedtuple(
     'MovingData',
-    ('moving_time', 'stopped_time', 'moving_distance', 'stopped_distance', 'max_speed'))
+    ('moving_time', 'stopped_time', 'moving_distance', 'stopped_distance', 'max_speed', 'avg_speed'))
 UphillDownhill = mod_collections.namedtuple(
     'UphillDownhill',
     ('uphill', 'downhill'))
@@ -832,10 +832,12 @@ class GPXTrackSegment:
                         speeds_and_distances.append((distance / mod_utils.total_seconds(timedelta), distance, ))
 
         max_speed = None
+        avg_speed = None
         if speeds_and_distances:
             max_speed = mod_geo.calculate_max_speed(speeds_and_distances)
+            avg_speed = mod_geo.calculate_avg_speed(speeds_and_distances)
 
-        return MovingData(moving_time, stopped_time, moving_distance, stopped_distance, max_speed)
+        return MovingData(moving_time, stopped_time, moving_distance, stopped_distance, max_speed, avg_speed)
 
     def get_time_bounds(self):
         """
@@ -1623,9 +1625,10 @@ class GPXTrack:
         stopped_distance = 0.
 
         max_speed = 0.
+        avg_speed = 0.
 
         for segment in self.segments:
-            track_moving_time, track_stopped_time, track_moving_distance, track_stopped_distance, track_max_speed = segment.get_moving_data(stopped_speed_threshold)
+            track_moving_time, track_stopped_time, track_moving_distance, track_stopped_distance, track_max_speed, track_avg_speed = segment.get_moving_data(stopped_speed_threshold)
             moving_time += track_moving_time
             stopped_time += track_stopped_time
             moving_distance += track_moving_distance
@@ -1633,8 +1636,9 @@ class GPXTrack:
 
             if track_max_speed is not None and track_max_speed > max_speed:
                 max_speed = track_max_speed
+            avg_speed += track_avg_speed
 
-        return MovingData(moving_time, stopped_time, moving_distance, stopped_distance, max_speed)
+        return MovingData(moving_time, stopped_time, moving_distance, stopped_distance, max_speed, (avg_speed / len(self.segments)) if len(self.segments) else 0)
 
     def add_elevation(self, delta):
         """
@@ -2143,9 +2147,10 @@ class GPX:
         stopped_distance = 0.
 
         max_speed = 0.
+        avg_speed = 0.
 
         for track in self.tracks:
-            track_moving_time, track_stopped_time, track_moving_distance, track_stopped_distance, track_max_speed = track.get_moving_data(stopped_speed_threshold)
+            track_moving_time, track_stopped_time, track_moving_distance, track_stopped_distance, track_max_speed, track_avg_speed = track.get_moving_data(stopped_speed_threshold)
             moving_time += track_moving_time
             stopped_time += track_stopped_time
             moving_distance += track_moving_distance
@@ -2153,8 +2158,9 @@ class GPX:
 
             if track_max_speed > max_speed:
                 max_speed = track_max_speed
+            avg_speed += track_avg_speed
 
-        return MovingData(moving_time, stopped_time, moving_distance, stopped_distance, max_speed)
+        return MovingData(moving_time, stopped_time, moving_distance, stopped_distance, max_speed, (avg_speed / len(self.tracks)) if len(self.tracks) else 0)
 
     def split(self, track_no, track_segment_no, track_point_no):
         """ 

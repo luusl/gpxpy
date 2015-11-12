@@ -85,15 +85,7 @@ def length_3d(locations=None):
     return length(locations, True)
 
 
-def calculate_max_speed(speeds_and_distances):
-    """
-    Compute average distance and standard deviation for distance. Extremes
-    in distances are usually extremes in speeds, so we will ignore them,
-    here.
-
-    speeds_and_distances must be a list containing pairs of (speed, distance)
-    for every point in a track segment.
-    """
+def get_filtered_speeds_and_distances(speeds_and_distances):
     assert speeds_and_distances
     if len(speeds_and_distances) > 0:
         assert len(speeds_and_distances[0]) == 2
@@ -111,7 +103,19 @@ def calculate_max_speed(speeds_and_distances):
     standard_distance_deviation = mod_math.sqrt(sum(map(lambda distance: (distance-average_distance)**2, distances))/size)
 
     # Ignore items where the distance is too big:
-    filtered_speeds_and_distances = filter(lambda speed_and_distance: abs(speed_and_distance[1] - average_distance) <= standard_distance_deviation * 1.5, speeds_and_distances)
+    return filter(lambda speed_and_distance: abs(speed_and_distance[1] - average_distance) <= standard_distance_deviation * 1.5, speeds_and_distances)
+
+
+def calculate_max_speed(speeds_and_distances):
+    """
+    Compute average distance and standard deviation for distance. Extremes
+    in distances are usually extremes in speeds, so we will ignore them,
+    here.
+
+    speeds_and_distances must be a list containing pairs of (speed, distance)
+    for every point in a track segment.
+    """
+    filtered_speeds_and_distances = get_filtered_speeds_and_distances(speeds_and_distances)
 
     # sort by speed:
     speeds = list(map(lambda speed_and_distance: speed_and_distance[0], filtered_speeds_and_distances))
@@ -121,12 +125,17 @@ def calculate_max_speed(speeds_and_distances):
         return None
     speeds.sort()
 
-    # Even here there may be some extremes => ignore the last 5%:
-    index = int(len(speeds) * 0.95)
+    # Even here there may be some extremes => ignore the last 2%:
+    index = int(len(speeds) * 0.98)
     if index >= len(speeds):
         index = -1
 
     return speeds[index]
+
+
+def calculate_avg_speed(speeds_and_distances):
+    filtered_speeds_and_distances = get_filtered_speeds_and_distances(speeds_and_distances)
+    return sum(list(map(lambda speed: speed[0], filtered_speeds_and_distances))) / len(filtered_speeds_and_distances)
 
 
 def calculate_uphill_downhill(elevations):
